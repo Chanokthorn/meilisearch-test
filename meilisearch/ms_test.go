@@ -118,16 +118,12 @@ type item struct {
 }
 
 func Test_meiliSearch_WaitTaskDone(t *testing.T) {
-	t.Log("JOHNNNNNNNNN")
-
 	items := make([]item, 100)
 	for i := range items {
 		faker.FakeData(&items[i])
 	}
 
 	t.Run("Test WaitTaskDone", func(t *testing.T) {
-		t.Log("JOHNNNNNNNNN")
-		println("JOHNNNNN")
 		m := NewMeiliSearch("http://localhost:7700", "MASTER_KEY")
 
 		err := m.CreateIndex(t.Context(), "test-index-wait-task-done", "id")

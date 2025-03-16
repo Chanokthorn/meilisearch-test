@@ -127,6 +127,53 @@ func (_c *MeiliSearch_CreateIndex_Call) RunAndReturn(run func(context.Context, s
 	return _c
 }
 
+// DeleteIndex provides a mock function with given fields: ctx, indexID
+func (_m *MeiliSearch) DeleteIndex(ctx context.Context, indexID string) error {
+	ret := _m.Called(ctx, indexID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteIndex")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, indexID)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MeiliSearch_DeleteIndex_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteIndex'
+type MeiliSearch_DeleteIndex_Call struct {
+	*mock.Call
+}
+
+// DeleteIndex is a helper method to define mock.On call
+//   - ctx context.Context
+//   - indexID string
+func (_e *MeiliSearch_Expecter) DeleteIndex(ctx interface{}, indexID interface{}) *MeiliSearch_DeleteIndex_Call {
+	return &MeiliSearch_DeleteIndex_Call{Call: _e.mock.On("DeleteIndex", ctx, indexID)}
+}
+
+func (_c *MeiliSearch_DeleteIndex_Call) Run(run func(ctx context.Context, indexID string)) *MeiliSearch_DeleteIndex_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MeiliSearch_DeleteIndex_Call) Return(_a0 error) *MeiliSearch_DeleteIndex_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MeiliSearch_DeleteIndex_Call) RunAndReturn(run func(context.Context, string) error) *MeiliSearch_DeleteIndex_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // WaitTaskDone provides a mock function with given fields: ctx, taskUid
 func (_m *MeiliSearch) WaitTaskDone(ctx context.Context, taskUid int) error {
 	ret := _m.Called(ctx, taskUid)
