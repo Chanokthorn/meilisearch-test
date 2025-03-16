@@ -41,6 +41,6 @@ func (i *Iterative) Run(ctx context.Context) (int, error) {
 			return 0, err
 		}
 	}
-	
+
 	return lastTaskUid, nil
 }

@@ -2,6 +2,6 @@ package runner
 
 import "context"
 
-type Runer interface {
+type Runner interface {
 	Run(ctx context.Context) (finalTaskUID int, err error)
 }

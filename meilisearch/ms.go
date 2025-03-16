@@ -9,22 +9,27 @@ import (
 	"gopkg.in/resty.v1"
 )
 
-type MeiliSearch struct {
+type MeiliSearch interface {
+	CreateIndex(ctx context.Context, indexID string, primaryKey string) error
+	AddOrUpdateDocument(ctx context.Context, indexName string, document any) (taskUid int, err error)
+}
+
+type meiliSearch struct {
 	client *resty.Client
 }
 
-func NewMeiliSearch(endpoint string, apiKey string) *MeiliSearch {
+func NewMeiliSearch(endpoint string, apiKey string) *meiliSearch {
 	client := resty.New()
 	client.SetHostURL(endpoint)
 	client.SetHeader("content-type", "application/json")
 	client.SetHeader("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 
-	return &MeiliSearch{
+	return &meiliSearch{
 		client: client,
 	}
 }
 
-func (m *MeiliSearch) CreateIndex(ctx context.Context, indexID string, primaryKey string) error {
+func (m *meiliSearch) CreateIndex(ctx context.Context, indexID string, primaryKey string) error {
 	_, err := m.client.R().SetBody(map[string]interface{}{
 		"uid":        indexID,
 		"primaryKey": primaryKey,
@@ -45,7 +50,7 @@ type AddOrUpdateDocumentResponse struct {
 	// ...
 }
 
-func (m *MeiliSearch) AddOrUpdateDocument(ctx context.Context, indexName string, document any) (taskUid int, err error) {
+func (m *meiliSearch) AddOrUpdateDocument(ctx context.Context, indexName string, document any) (taskUid int, err error) {
 	res, err := m.client.R().SetBody(document).Post(fmt.Sprintf("/indexes/%s/documents", indexName))
 	if err != nil {
 		err := fmt.Errorf("error adding or updating document: %w", err)
@@ -68,5 +73,3 @@ func (m *MeiliSearch) AddOrUpdateDocument(ctx context.Context, indexName string,
 
 	return result.TaskUid, nil
 }
-
-
