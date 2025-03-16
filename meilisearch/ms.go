@@ -5,17 +5,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"gopkg.in/resty.v1"
 )
 
 type MeiliSearch interface {
 	CreateIndex(ctx context.Context, indexID string, primaryKey string) error
+	DeleteIndex(ctx context.Context, indexID string) error
 	AddOrUpdateDocument(ctx context.Context, indexName string, document any) (taskUid int, err error)
+	WaitTaskDone(ctx context.Context, taskUid int) error
 }
 
 type meiliSearch struct {
-	client *resty.Client
+	client               *resty.Client
+	statusUpdateInterval time.Duration
 }
 
 func NewMeiliSearch(endpoint string, apiKey string) *meiliSearch {
@@ -25,7 +29,8 @@ func NewMeiliSearch(endpoint string, apiKey string) *meiliSearch {
 	client.SetHeader("Authorization", fmt.Sprintf("Bearer %s", apiKey))
 
 	return &meiliSearch{
-		client: client,
+		client:               client,
+		statusUpdateInterval: 100 * time.Millisecond,
 	}
 }
 
@@ -37,6 +42,17 @@ func (m *meiliSearch) CreateIndex(ctx context.Context, indexID string, primaryKe
 
 	if err != nil {
 		err := fmt.Errorf("error creating index: %w", err)
+		log.Printf("%s", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (m *meiliSearch) DeleteIndex(ctx context.Context, indexID string) error {
+	_, err := m.client.R().Delete(fmt.Sprintf("/indexes/%s", indexID))
+	if err != nil {
+		err := fmt.Errorf("error deleting index: %w", err)
 		log.Printf("%s", err.Error())
 		return err
 	}
@@ -72,4 +88,61 @@ func (m *meiliSearch) AddOrUpdateDocument(ctx context.Context, indexName string,
 	}
 
 	return result.TaskUid, nil
+}
+
+type GetTaskResponse struct {
+	Status string `json:"status"`
+	// ...
+}
+
+func (m *meiliSearch) getTaskStatus(ctx context.Context, taskUid int) (string, error) {
+	res, err := m.client.R().Get(fmt.Sprintf("/tasks/%d", taskUid))
+	if err != nil {
+		err := fmt.Errorf("error getting task status: %w", err)
+		log.Printf("%s", err.Error())
+		return "", err
+	}
+
+	if res.StatusCode() != 200 {
+		err := fmt.Errorf("error getting task status: %s", res.String())
+		log.Printf("%s", err.Error())
+		return "", err
+	}
+
+	// parse response
+	var result GetTaskResponse
+	if err := json.Unmarshal(res.Body(), &result); err != nil {
+		log.Printf("error parsing response body: %s", err.Error())
+		return "", err
+	}
+
+	return result.Status, nil
+}
+
+func (m *meiliSearch) WaitTaskDone(ctx context.Context, taskUid int) error {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+
+		for {
+			status, err := m.getTaskStatus(ctx, taskUid)
+			if err != nil {
+				log.Printf("error getting task status: %s", err.Error())
+				return
+			}
+
+			if status == "succeeded" {
+				return
+			}
+
+			time.Sleep(m.statusUpdateInterval)
+		}
+	}()
+
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }

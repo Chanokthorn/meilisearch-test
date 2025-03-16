@@ -127,6 +127,53 @@ func (_c *MeiliSearch_CreateIndex_Call) RunAndReturn(run func(context.Context, s
 	return _c
 }
 
+// WaitTaskDone provides a mock function with given fields: ctx, taskUid
+func (_m *MeiliSearch) WaitTaskDone(ctx context.Context, taskUid int) error {
+	ret := _m.Called(ctx, taskUid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for WaitTaskDone")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, int) error); ok {
+		r0 = rf(ctx, taskUid)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MeiliSearch_WaitTaskDone_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'WaitTaskDone'
+type MeiliSearch_WaitTaskDone_Call struct {
+	*mock.Call
+}
+
+// WaitTaskDone is a helper method to define mock.On call
+//   - ctx context.Context
+//   - taskUid int
+func (_e *MeiliSearch_Expecter) WaitTaskDone(ctx interface{}, taskUid interface{}) *MeiliSearch_WaitTaskDone_Call {
+	return &MeiliSearch_WaitTaskDone_Call{Call: _e.mock.On("WaitTaskDone", ctx, taskUid)}
+}
+
+func (_c *MeiliSearch_WaitTaskDone_Call) Run(run func(ctx context.Context, taskUid int)) *MeiliSearch_WaitTaskDone_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int))
+	})
+	return _c
+}
+
+func (_c *MeiliSearch_WaitTaskDone_Call) Return(_a0 error) *MeiliSearch_WaitTaskDone_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MeiliSearch_WaitTaskDone_Call) RunAndReturn(run func(context.Context, int) error) *MeiliSearch_WaitTaskDone_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // NewMeiliSearch creates a new instance of MeiliSearch. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
 // The first argument is typically a *testing.T value.
 func NewMeiliSearch(t interface {

@@ -9,12 +9,12 @@ import (
 )
 
 type item struct {
-	ID          string  `json:"id"`
+	ID string `json:"id"`
 }
 
 func TestIterative_Run(t *testing.T) {
 	t.Run("Test Iterative Run", func(t *testing.T) {
-		data := []any {
+		data := []any{
 			item{
 				ID: "1",
 			},
@@ -38,6 +38,6 @@ func TestIterative_Run(t *testing.T) {
 		lastID, err := it.Run(t.Context())
 		assert.NoError(t, err)
 		assert.Equal(t, 3, lastID)
-		
+
 	})
 }
