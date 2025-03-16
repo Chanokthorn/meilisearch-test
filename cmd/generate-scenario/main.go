@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"ms-tester/cmd/cli/config"
+	"ms-tester/cmd/generate-scenario/config"
 	"ms-tester/generator"
 	"ms-tester/meilisearch"
 	"ms-tester/model"
