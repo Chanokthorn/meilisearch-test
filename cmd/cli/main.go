@@ -15,9 +15,9 @@ func main() {
 
 	ms := meilisearch.NewMeiliSearch(cfg.Host, cfg.MasterKey)
 
-	generator := generator.NewGenerator(model.Product{}, 200)
+	generator := generator.NewGenerator(model.Product{})
 
-	data, err := generator.Generate()
+	data, err := generator.Generate(200)
 	if err != nil {
 		panic(fmt.Errorf("failed to generate data: %w", err))
 	}

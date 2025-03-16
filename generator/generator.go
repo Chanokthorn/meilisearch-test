@@ -8,17 +8,16 @@ import (
 
 type Generator struct {
 	model  any
-	amount int
 }
 
-func NewGenerator(model any, amount int) *Generator {
-	return &Generator{model: model, amount: amount}
+func NewGenerator(model any) *Generator {
+	return &Generator{model: model}
 }
 
-func (g *Generator) Generate() (data []any, err error) {
+func (g *Generator) Generate(amount int) (data []any, err error) {
 	// generate data
-	data = make([]any, g.amount)
-	for i := 0; i < g.amount; i++ {
+	data = make([]any, amount)
+	for i := 0; i < amount; i++ {
 		m := reflect.New(reflect.TypeOf(g.model)).Elem().Interface()
 		err = faker.FakeData(&m)
 		if err != nil {
@@ -27,7 +26,7 @@ func (g *Generator) Generate() (data []any, err error) {
 		data[i] = m
 	}
 
-	for i := 0; i < g.amount; i++ {
+	for i := 0; i < amount; i++ {
 		m := reflect.New(reflect.TypeOf(g.model)).Elem().Interface()
 		err = faker.FakeData(&m)
 		if err != nil {
@@ -38,3 +37,25 @@ func (g *Generator) Generate() (data []any, err error) {
 
 	return data, nil
 }
+
+// func (g *Generator) GenerateReplace(amount int, value any) error {
+// 	// generate data
+
+// 	data, ok := value.(*[]reflect.Type)
+// 	if !ok {
+// 		return fmt.Errorf("value is not a pointer to slice")
+// 	}
+
+// 	*data = make([]any, amount)
+// 	for i := 0; i < amount; i++ {
+// 		m := reflect.New(reflect.TypeOf(g.model)).Elem().Interface()
+// 		err := faker.FakeData(&m)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		(*data)[i] = m
+// 	}
+
+// 	return nil
+// }
+
