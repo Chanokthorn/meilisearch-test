@@ -118,7 +118,7 @@ type item struct {
 }
 
 func Test_meiliSearch_WaitTaskDone(t *testing.T) {
-	items := make([]item, 100)
+	items := make([]item, 20000)
 	for i := range items {
 		faker.FakeData(&items[i])
 	}
@@ -136,6 +136,8 @@ func Test_meiliSearch_WaitTaskDone(t *testing.T) {
 
 		err = m.WaitTaskDone(t.Context(), taskUid)
 		assert.NoError(t, err)
+
+		assert.NoError(t, m.DeleteIndex(t.Context(), "test-index-wait-task-done"))
 	})
 
 }

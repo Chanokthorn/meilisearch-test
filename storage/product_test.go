@@ -3,7 +3,6 @@ package storage
 import (
 	"context"
 	"ms-tester/model"
-	"os"
 	"testing"
 
 	"github.com/go-faker/faker/v4"
@@ -29,7 +28,7 @@ func TestProductStorage_SaveProduct(t *testing.T) {
 	err = ps.SaveProduct(context.Background(), products, "products.data")
 	assert.NoError(t, err)
 
-	assert.NoError(t, os.Remove("products.data"))
+	assert.NoError(t, ps.DeleteProduct(context.Background(), "products.data"))
 }
 
 func TestProductStorage_LoadProduct(t *testing.T) {
@@ -57,5 +56,5 @@ func TestProductStorage_LoadProduct(t *testing.T) {
 	assert.Len(t, loaded3, 50)
 	assert.False(t, next3)
 
-	os.Remove("products-read.data")
+	assert.NoError(t, ps.DeleteProduct(context.Background(), "products-read.data"))
 }

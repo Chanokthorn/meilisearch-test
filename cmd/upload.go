@@ -10,6 +10,7 @@ import (
 	"ms-tester/meilisearch"
 	"ms-tester/runner"
 	"ms-tester/storage"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -18,11 +19,11 @@ type uploadMode string
 
 const (
 	uploadModeIterative uploadMode = "iterative"
-	uploadModeBulk uploadMode = "bulk"
+	uploadModeBulk      uploadMode = "bulk"
 )
 
 var (
-	mode uploadMode
+	mode     uploadMode
 	filePath string
 )
 
@@ -37,7 +38,7 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg := config.Read() 
+		cfg := config.Read()
 
 		fmt.Println("upload called on file:", filePath)
 
@@ -46,15 +47,23 @@ to quickly create a Cobra application.`,
 
 		ms := meilisearch.NewMeiliSearch(cfg.Host, cfg.MasterKey)
 
-		var rn runner.Runner
-		switch mode {
-		case uploadModeIterative:
-			fmt.Println("upload mode iterative")
-			rn = runner.NewIterative(ms)
-		case uploadModeBulk:
-			fmt.Println("upload mode bulk, exiting...")
+		if err := ms.CreateIndex(context.Background(), "products", "id"); err != nil {
+			fmt.Println(err)
 			return
 		}
+
+		// switch mode {
+		// case uploadModeIterative:
+		// 	fmt.Println("upload mode iterative")
+		// 	rn = runner.NewIterative(ms)
+		// case uploadModeBulk:
+		// 	fmt.Println("upload mode bulk, exiting...")
+		// 	return
+		// }
+
+		start := time.Now()
+
+		rn := runner.NewIterative(ms).SetIndexUid("products")
 
 		ctx := context.Background()
 		var latestTaskID int
@@ -65,15 +74,30 @@ to quickly create a Cobra application.`,
 				fmt.Println(err)
 				return
 			}
-			
-			// upload to meilisearch
+			products := make([]any, len(data))
+			for i, p := range data {
+				products[i] = p
+			}
+			rn.SetData(products)
 			latestTaskID, err = rn.Run(ctx)
-
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
 
 			if !next {
 				break
 			}
 		}
+
+		err := ms.WaitTaskDone(ctx, latestTaskID)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Println("Upload completed")
+		fmt.Printf("Time taken: %s\n", time.Since(start))
 
 	},
 }

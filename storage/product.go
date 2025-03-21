@@ -8,6 +8,7 @@ import (
 	"log"
 	"ms-tester/model"
 	"os"
+	"path/filepath"
 )
 
 type ProductStorage struct {
@@ -22,8 +23,19 @@ func NewProductStorage() *ProductStorage {
 	}
 }
 
+func getAbsPath(path string) (string, error) {
+	return filepath.Abs(filepath.Join(filepath.Dir(os.Args[0]), path))
+}
+
 func (p *ProductStorage) SaveProduct(ctx context.Context, products []model.Product, path string) error {
-	file, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	fullPath, err := getAbsPath(path)
+	if err != nil {
+		err := fmt.Errorf("error getting absolute path: %w", err)
+		log.Printf("%s", err.Error())
+		return err
+	}
+
+	file, err := os.OpenFile(fullPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		err := fmt.Errorf("error creating file: %w", err)
 		log.Printf("%s", err.Error())
@@ -61,7 +73,14 @@ func (p *ProductStorage) SaveProduct(ctx context.Context, products []model.Produ
 }
 
 func (p *ProductStorage) SetReadFile(path string) error {
-	file, err := os.OpenFile(path, os.O_RDONLY, 0644)
+	fullPath, err := getAbsPath(path)
+	if err != nil {
+		err := fmt.Errorf("error getting absolute path: %w", err)
+		log.Printf("%s", err.Error())
+		return err
+	}
+
+	file, err := os.OpenFile(fullPath, os.O_RDONLY, 0644)
 	if err != nil {
 		err := fmt.Errorf("error opening file: %w", err)
 		log.Printf("%s", err.Error())
@@ -106,4 +125,15 @@ func (p *ProductStorage) LoadProduct(ctx context.Context) ([]model.Product, bool
 	}
 
 	return products, !end, nil
+}
+
+func (p *ProductStorage) DeleteProduct(ctx context.Context, path string) error {
+	fullPath, err := getAbsPath(path)
+	if err != nil {
+		err := fmt.Errorf("error getting absolute path: %w", err)
+		log.Printf("%s", err.Error())
+		return err
+	}
+
+	return os.Remove(fullPath)
 }
