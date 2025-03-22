@@ -83,6 +83,10 @@ func (sl *streamLoader) SetModel(model any) {
 }
 
 func (sl *streamLoader) Start() (<-chan any, <-chan error) {
+	if sl.model == nil {
+		log.Fatalf("model not set")
+	}
+
 	ctx := context.Background()
 	out := make(chan any)
 	errChan := make(chan error)

@@ -17,7 +17,6 @@ type Iterative struct {
 }
 
 type IterativeConfig struct {
-	loader   storage.StreamLoader
 	indexUid string
 }
 
@@ -38,16 +37,7 @@ func (i *Iterative) SetWorkerAmount(workerAmount int) *Iterative {
 	return i
 }
 
-func (i *Iterative) SetLoader(loader storage.StreamLoader) *Iterative {
-	i.loader = loader
-	return i
-}
-
-func (i *Iterative) Run(ctx context.Context) (int, error) {
-	if i.loader == nil {
-		return 0, fmt.Errorf("loader is not set")
-	}
-
+func (i *Iterative) Run(ctx context.Context, loader storage.StreamLoader) (int, error) {
 	var (
 		lastTaskUidChan = make(chan int)
 		lastTaskUid     int
@@ -55,7 +45,7 @@ func (i *Iterative) Run(ctx context.Context) (int, error) {
 	)
 
 	// run stream loader
-	dataChan, _ := i.loader.Start()
+	dataChan, _ := loader.Start()
 
 	var workerWG sync.WaitGroup
 

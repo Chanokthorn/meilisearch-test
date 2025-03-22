@@ -1,5 +1,5 @@
 /*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
+Copyright © 2025 NAME HERE chanokthorn6@gmail.com
 */
 package cmd
 
@@ -8,8 +8,9 @@ import (
 	"fmt"
 	"ms-tester/cmd/config"
 	"ms-tester/meilisearch"
+	"ms-tester/model"
 	"ms-tester/runner"
-	"ms-tester/storage"
+	"ms-tester/storage/file_system"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -25,6 +26,7 @@ const (
 var (
 	mode     uploadMode
 	filePath string
+	index    string
 )
 
 // uploadCmd represents the upload command
@@ -42,12 +44,13 @@ to quickly create a Cobra application.`,
 
 		fmt.Println("upload called on file:", filePath)
 
-		st := storage.NewProductStorage()
-		st.SetReadFile(filePath)
+		loader := file_system.NewStreamLoader(file_system.WithReadBatchSize(100))
+		loader.SetReadFile(filePath)
+		loader.SetModel(model.Product{})
 
 		ms := meilisearch.NewMeiliSearch(cfg.Host, cfg.MasterKey)
 
-		if err := ms.CreateIndex(context.Background(), "products", "id"); err != nil {
+		if err := ms.CreateIndex(context.Background(), index, "id"); err != nil {
 			fmt.Println(err)
 			return
 		}
@@ -56,41 +59,24 @@ to quickly create a Cobra application.`,
 		switch mode {
 		case uploadModeIterative:
 			fmt.Println("upload mode iterative")
-			rn = runner.NewIterative(ms)
+			rn = runner.NewIterative(ms).SetIndexUid(index).SetWorkerAmount(10)
 		case uploadModeBulk:
-			fmt.Println("upload mode bulk, exiting...")
+			fmt.Println("upload mode bulk not available yet, exiting...")
 			return
 		}
 
 		start := time.Now()
 
 		ctx := context.Background()
-		var latestTaskID int
-		for {
-			// load data
-			data, next, err := st.LoadProduct(ctx)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-			products := make([]any, len(data))
-			for i, p := range data {
-				products[i] = p
-			}
-			rn.SetData(products)
-			latestTaskID, err = rn.Run(ctx)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
 
-			if !next {
-				break
-			}
+		latestTaskID, err := rn.Run(ctx, loader)
+		if err != nil {
+			err := fmt.Errorf("failed to run: %w", err)
+			fmt.Println(err)
+			return
 		}
 
-		err := ms.WaitTaskDone(ctx, latestTaskID)
-		if err != nil {
+		if err := ms.WaitTaskDone(ctx, latestTaskID); err != nil {
 			fmt.Println(err)
 			return
 		}
@@ -106,6 +92,8 @@ func init() {
 	uploadCmd.MarkFlagRequired("mode")
 	uploadCmd.Flags().StringVarP(&filePath, "path", "p", "", "path directory")
 	uploadCmd.MarkFlagRequired("mode")
+	uploadCmd.Flags().StringVarP(&index, "index", "i", "", "index name")
+	uploadCmd.MarkFlagRequired("index")
 	rootCmd.AddCommand(uploadCmd)
 
 	// Here you will define your flags and configuration settings.

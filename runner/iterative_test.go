@@ -59,12 +59,12 @@ func TestIterative_Run(t *testing.T) {
 			return it.ID, nil
 		})
 
-		it := NewIterative(ms).SetIndexUid("indexUid").SetLoader(loader).SetWorkerAmount(3)
+		it := NewIterative(ms).SetIndexUid("indexUid").SetWorkerAmount(3)
 
 		ctx, _ := context.WithTimeout(t.Context(), 3*time.Second)
 		
 
-		lastID, err := it.Run(ctx)
+		lastID, err := it.Run(ctx, loader)
 		assert.NoError(t, err)
 		assert.Equal(t, amount-1, lastID)
 		for _, called := range uploadCalls {
