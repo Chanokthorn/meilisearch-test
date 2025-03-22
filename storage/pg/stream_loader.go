@@ -18,7 +18,6 @@ func NewStreamLoader(url string) (*streamLoader, error) {
 		return nil, err
 	}
 
-
 	return &streamLoader{db: pgConn}, nil
 }
 
