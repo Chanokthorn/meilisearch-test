@@ -31,6 +31,8 @@ require (
 require (
 	github.com/caarlos0/env/v11 v11.3.1
 	github.com/go-faker/faker/v4 v4.6.0
+	github.com/jmoiron/sqlx v1.4.0
+	github.com/lib/pq v1.10.9
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
 	golang.org/x/net v0.33.0 // indirect
