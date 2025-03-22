@@ -2,40 +2,30 @@ package runner
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"ms-tester/meilisearch"
 	"ms-tester/storage"
+	"sync"
 )
 
 type Iterative struct {
-	ms meilisearch.MeiliSearch
+	ms           meilisearch.MeiliSearch
+	workerAmount int
 	IterativeConfig
-	
+	mu sync.Mutex
 }
 
 type IterativeConfig struct {
-	storage 	storage.Storage 
-	// dataStream   chan any
-	indexUid     string
-	// workerAmount int
+	loader   storage.StreamLoader
+	indexUid string
 }
 
 func NewIterative(ms meilisearch.MeiliSearch) *Iterative {
-	return &Iterative{ms: ms}
-}
-
-// func (i *Iterative) SetData(data []any) *Iterative {
-// 	i.data = data
-// 	return i
-// }
-
-// func (i *Iterative) SetDataStream(dataStream chan any) *Iterative {
-// 	i.dataStream = dataStream
-// 	return i
-// }
-
-func (i *Iterative) SetStorage(storage storage.Storage) *Iterative {
-	i.storage = storage
-	return i
+	return &Iterative{
+		workerAmount: 10,
+		ms: ms,
+	}
 }
 
 func (i *Iterative) SetIndexUid(indexUid string) *Iterative {
@@ -43,57 +33,77 @@ func (i *Iterative) SetIndexUid(indexUid string) *Iterative {
 	return i
 }
 
-// func (i *Iterative) SetWorkerAmount(workerAmount int) *Iterative {
-// 	i.workerAmount = workerAmount
-// 	return i
-// }
+func (i *Iterative) SetWorkerAmount(workerAmount int) *Iterative {
+	i.workerAmount = workerAmount
+	return i
+}
+
+func (i *Iterative) SetLoader(loader storage.StreamLoader) *Iterative {
+	i.loader = loader
+	return i
+}
 
 func (i *Iterative) Run(ctx context.Context) (int, error) {
+	if i.loader == nil {
+		return 0, fmt.Errorf("loader is not set")
+	}
+
 	var (
-		lastTaskUid int
-		err         error
+		lastTaskUidChan = make(chan int)
+		lastTaskUid     int
+		uploadErrChan   = make(chan error, 10)
 	)
 
-	for _, d := range i.storage.
+	// run stream loader
+	dataChan, _ := i.loader.Start()
 
-	for _, d := range i.data {
-		lastTaskUid, err = i.ms.AddOrUpdateDocument(ctx, i.indexUid, d)
-		if err != nil {
-			return 0, err
-		}
+	var workerWG sync.WaitGroup
+
+	// for worker in worker amount, run function that consumes from stream loader
+	for x := 0; x < i.workerAmount; x++ {
+		workerWG.Add(1)
+		go func() {
+			defer workerWG.Done()
+			for d := range dataChan {
+				taskUid, err := i.ms.AddOrUpdateDocument(ctx, i.indexUid, d)
+				if err != nil {
+					uploadErrChan <- err
+					return
+				}
+
+				lastTaskUidChan <- taskUid
+			}
+		}()
 	}
+
+	// collect information from workers
+	var collectorWG sync.WaitGroup
+
+	collectorWG.Add(1)
+	go func() {
+		defer collectorWG.Done()
+		for err := range uploadErrChan {
+			err = fmt.Errorf("error uploading document: %w", err)
+			log.Println(err.Error())
+			return
+		}
+	}()
+
+	collectorWG.Add(1)
+	go func() {
+		defer collectorWG.Done()
+		for taskUid := range lastTaskUidChan {
+			i.mu.Lock()
+			lastTaskUid = max(lastTaskUid, taskUid)
+			i.mu.Unlock()
+		}
+	}()
+
+	workerWG.Wait()
+	close(lastTaskUidChan)
+	close(uploadErrChan)
+
+	collectorWG.Wait()
 
 	return lastTaskUid, nil
 }
-
-// func (i *Iterative) RunStream(ctx context.Context) (int, error) {
-// 	var (
-// 		taskUidChan = make(chan int)
-// 		errChan      = make(chan error)
-// 	)
-
-// 	for x := 0; x < i.workerAmount; x++ {
-// 		go func() {
-// 			for d := range i.dataStream {
-// 				taskUid, err := i.ms.AddOrUpdateDocument(ctx, i.indexUid, d)
-// 				if err != nil {
-// 					errChan <- err
-// 					return
-// 				}
-
-// 				taskUidChan <- taskUid
-// 			}
-// 		}()
-// 	}
-
-// 	var lastTaskUid int
-// 	for {
-// 		select {
-// 		case <-ctx.Done():
-// 			return 0, ctx.Err()
-// 		case err := <-errChan:
-// 			return 0, err
-// 		case lastTaskUid = <-taskUidChan:
-// 		}
-// 	}
-// }

@@ -1,43 +1,75 @@
 package runner
 
 import (
+	"context"
 	"ms-tester/mocks/meilisearch"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 type item struct {
-	ID string `json:"id"`
+	ID int `json:"id"`
+}
+
+func generateItems(amount int) []item {
+	items := make([]item, amount)
+	for i := 0; i < amount; i++ {
+		items[i] = item{
+			ID: i,
+		}
+	}
+	return items
+}
+
+type mockStreamLoader struct {
+	data []item
+}
+
+func (m *mockStreamLoader) SetModel(model any) {}
+
+func (m *mockStreamLoader) Start() (<-chan any, <-chan error) {
+	dataChan := make(chan any, 10)
+	errChan := make(chan error, 10)
+
+	go func() {
+		for _, item := range m.data {
+			dataChan <- item
+		}
+		close(dataChan)
+		close(errChan)
+	}()
+
+	return dataChan, errChan
 }
 
 func TestIterative_Run(t *testing.T) {
-	t.Run("Test Iterative Run", func(t *testing.T) {
-		data := []any{
-			item{
-				ID: "1",
-			},
-			item{
-				ID: "2",
-			},
-			item{
-				ID: "3",
-			},
-			item{
-				ID: "4",
-			},
-		}
+	t.Run("Test Iterative Run successfully", func(t *testing.T) {
+		amount := 10
+		data := generateItems(amount)
+		loader := &mockStreamLoader{data: data}
+		uploadCalls := make([]bool, amount)
 
 		ms := mocks.NewMeiliSearch(t)
-		ms.EXPECT().AddOrUpdateDocument(mock.Anything, mock.Anything, mock.Anything).Return(0, nil).Times(1)
-		ms.EXPECT().AddOrUpdateDocument(mock.Anything, mock.Anything, mock.Anything).Return(1, nil).Times(1)
-		ms.EXPECT().AddOrUpdateDocument(mock.Anything, mock.Anything, mock.Anything).Return(2, nil).Times(1)
-		ms.EXPECT().AddOrUpdateDocument(mock.Anything, mock.Anything, mock.Anything).Return(3, nil).Times(1)
-		it := NewIterative(ms).SetIndexUid("indexUid").SetData(data)
-		lastID, err := it.Run(t.Context())
+		ms.EXPECT().AddOrUpdateDocument(mock.Anything, "indexUid", mock.Anything).RunAndReturn(func(ctx context.Context, indexUid string, data any) (int, error) {
+			it := data.(item)
+			uploadCalls[it.ID] = true
+			return it.ID, nil
+		})
+
+		it := NewIterative(ms).SetIndexUid("indexUid").SetLoader(loader).SetWorkerAmount(3)
+
+		ctx, _ := context.WithTimeout(t.Context(), 3*time.Second)
+		
+
+		lastID, err := it.Run(ctx)
 		assert.NoError(t, err)
-		assert.Equal(t, 3, lastID)
+		assert.Equal(t, amount-1, lastID)
+		for _, called := range uploadCalls {
+			assert.True(t, called)
+		}
 
 	})
 }

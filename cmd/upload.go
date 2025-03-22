@@ -52,18 +52,17 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		// switch mode {
-		// case uploadModeIterative:
-		// 	fmt.Println("upload mode iterative")
-		// 	rn = runner.NewIterative(ms)
-		// case uploadModeBulk:
-		// 	fmt.Println("upload mode bulk, exiting...")
-		// 	return
-		// }
+		var rn runner.Runner
+		switch mode {
+		case uploadModeIterative:
+			fmt.Println("upload mode iterative")
+			rn = runner.NewIterative(ms)
+		case uploadModeBulk:
+			fmt.Println("upload mode bulk, exiting...")
+			return
+		}
 
 		start := time.Now()
-
-		rn := runner.NewIterative(ms).SetIndexUid("products")
 
 		ctx := context.Background()
 		var latestTaskID int
