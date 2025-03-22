@@ -2,45 +2,98 @@ package runner
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"ms-tester/meilisearch"
+	"ms-tester/storage"
+	"sync"
 )
 
 type Iterative struct {
-	ms     meilisearch.MeiliSearch
+	ms           meilisearch.MeiliSearch
+	workerAmount int
 	IterativeConfig
+	mu sync.Mutex
 }
 
 type IterativeConfig struct {
-	data     []any
 	indexUid string
 }
 
 func NewIterative(ms meilisearch.MeiliSearch) *Iterative {
-	return &Iterative{ms: ms}
+	return &Iterative{
+		workerAmount: 10,
+		ms: ms,
+	}
 }
 
-func (i *Iterative) SetData(data []any) *Iterative{
-	i.data = data
-	return i
-}
-
-func (i *Iterative) SetIndexUid(indexUid string) *Iterative{
+func (i *Iterative) SetIndexUid(indexUid string) *Iterative {
 	i.indexUid = indexUid
 	return i
 }
 
-func (i *Iterative) Run(ctx context.Context) (int, error) {
+func (i *Iterative) SetWorkerAmount(workerAmount int) *Iterative {
+	i.workerAmount = workerAmount
+	return i
+}
+
+func (i *Iterative) Run(ctx context.Context, loader storage.StreamLoader) (int, error) {
 	var (
-		lastTaskUid int
-		err         error
+		lastTaskUidChan = make(chan int)
+		lastTaskUid     int
+		uploadErrChan   = make(chan error, 10)
 	)
 
-	for _, d := range i.data {
-		lastTaskUid, err = i.ms.AddOrUpdateDocument(ctx, i.indexUid, d)
-		if err != nil {
-			return 0, err
-		}
+	// run stream loader
+	dataChan, _ := loader.Start()
+
+	var workerWG sync.WaitGroup
+
+	// for worker in worker amount, run function that consumes from stream loader
+	for x := 0; x < i.workerAmount; x++ {
+		workerWG.Add(1)
+		go func() {
+			defer workerWG.Done()
+			for d := range dataChan {
+				taskUid, err := i.ms.AddOrUpdateDocument(ctx, i.indexUid, d)
+				if err != nil {
+					uploadErrChan <- err
+					return
+				}
+
+				lastTaskUidChan <- taskUid
+			}
+		}()
 	}
+
+	// collect information from workers
+	var collectorWG sync.WaitGroup
+
+	collectorWG.Add(1)
+	go func() {
+		defer collectorWG.Done()
+		for err := range uploadErrChan {
+			err = fmt.Errorf("error uploading document: %w", err)
+			log.Println(err.Error())
+			return
+		}
+	}()
+
+	collectorWG.Add(1)
+	go func() {
+		defer collectorWG.Done()
+		for taskUid := range lastTaskUidChan {
+			i.mu.Lock()
+			lastTaskUid = max(lastTaskUid, taskUid)
+			i.mu.Unlock()
+		}
+	}()
+
+	workerWG.Wait()
+	close(lastTaskUidChan)
+	close(uploadErrChan)
+
+	collectorWG.Wait()
 
 	return lastTaskUid, nil
 }

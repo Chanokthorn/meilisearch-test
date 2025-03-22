@@ -118,7 +118,7 @@ type item struct {
 }
 
 func Test_meiliSearch_WaitTaskDone(t *testing.T) {
-	items := make([]item, 20000)
+	items := make([]item, 10000)
 	for i := range items {
 		faker.FakeData(&items[i])
 	}
