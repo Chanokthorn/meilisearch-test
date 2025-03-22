@@ -1,3 +1,5 @@
 **/local.env
 
 storage/*.data
+
+data.out

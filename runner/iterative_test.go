@@ -2,7 +2,7 @@ package runner
 
 import (
 	"context"
-	"ms-tester/mocks/meilisearch"
+	mocks "ms-tester/mocks/meilisearch"
 	"testing"
 	"time"
 
@@ -47,7 +47,7 @@ func (m *mockStreamLoader) Start() (<-chan any, <-chan error) {
 
 func TestIterative_Run(t *testing.T) {
 	t.Run("Test Iterative Run successfully", func(t *testing.T) {
-		amount := 10
+		amount := 1000
 		data := generateItems(amount)
 		loader := &mockStreamLoader{data: data}
 		uploadCalls := make([]bool, amount)
@@ -59,12 +59,12 @@ func TestIterative_Run(t *testing.T) {
 			return it.ID, nil
 		})
 
-		it := NewIterative(ms).SetIndexUid("indexUid").SetWorkerAmount(3)
+		wk := NewIterativeWorker(ms).SetIndexUid("indexUid")
+		rn := NewRunner().SetWorker(wk).SetWorkerAmount(4)
 
 		ctx, _ := context.WithTimeout(t.Context(), 3*time.Second)
-		
 
-		lastID, err := it.Run(ctx, loader)
+		lastID, err := rn.Run(ctx, loader)
 		assert.NoError(t, err)
 		assert.Equal(t, amount-1, lastID)
 		for _, called := range uploadCalls {
