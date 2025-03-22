@@ -20,7 +20,7 @@ type uploadMode string
 
 const (
 	uploadModeIterative uploadMode = "iterative"
-	uploadModeBulk      uploadMode = "bulk"
+	uploadModeBatch      uploadMode = "batch"
 )
 
 var (
@@ -55,15 +55,19 @@ to quickly create a Cobra application.`,
 			return
 		}
 
-		var rn runner.Runner
+		var wk runner.Worker
 		switch mode {
 		case uploadModeIterative:
 			fmt.Println("upload mode iterative")
-			rn = runner.NewIterative(ms).SetIndexUid(index).SetWorkerAmount(10)
-		case uploadModeBulk:
-			fmt.Println("upload mode bulk not available yet, exiting...")
+			wk = runner.NewIterativeWorker(ms).SetIndexUid(index)
+		case uploadModeBatch:
+			fmt.Println("upload mode bulk")
+			wk = runner.NewBatchWorker(ms).SetBatchSize(10).SetIndexUid(index)
+		default:
+			fmt.Println("upload mode not found, exiting...")
 			return
 		}
+		rn := runner.NewRunner().SetWorker(wk).SetWorkerAmount(3)
 
 		start := time.Now()
 
