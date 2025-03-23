@@ -4,4 +4,4 @@ storage/*.data
 
 data.out
 
-.vscode/*
+.vscode/
