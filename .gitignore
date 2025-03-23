@@ -3,3 +3,5 @@
 storage/*.data
 
 data.out
+
+.vscode/*
