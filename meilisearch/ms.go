@@ -67,6 +67,14 @@ type AddOrUpdateDocumentResponse struct {
 }
 
 func (m *meiliSearch) AddOrUpdateDocument(ctx context.Context, indexName string, document any) (taskUid int, err error) {
+	dataBytes, err := json.MarshalIndent(document, "", "  ")
+	if err != nil {
+		log.Printf("error marshaling document to json: %s", err.Error())
+		return 0, err
+	}
+
+	log.Printf("document: %s", string(dataBytes))
+	
 	res, err := m.client.R().SetBody(document).Post(fmt.Sprintf("/indexes/%s/documents", indexName))
 	if err != nil {
 		err := fmt.Errorf("error adding or updating document: %w", err)

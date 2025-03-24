@@ -47,7 +47,7 @@ func (sl *streamLoader) SetSampleLimit(limit int) *streamLoader {
 	return sl
 }
 
-func (sl *streamLoader) Start() (chan interface{}, chan error) {
+func (sl *streamLoader) Start() (<-chan any, <-chan error) {
 	dataChan := make(chan interface{}, 10)
 	errChan := make(chan error, 10)
 
