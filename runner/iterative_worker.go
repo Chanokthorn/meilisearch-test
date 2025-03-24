@@ -7,13 +7,13 @@ import (
 )
 
 type iterativeWorker struct {
-	ms        meilisearch.MeiliSearch
-	indexUid  string
+	ms       meilisearch.MeiliSearch
+	indexUid string
 }
 
 func NewIterativeWorker(ms meilisearch.MeiliSearch) *iterativeWorker {
 	return &iterativeWorker{
-		ms:        ms,
+		ms: ms,
 	}
 }
 
@@ -33,5 +33,5 @@ func (iw *iterativeWorker) Process(ctx context.Context, dataChan <-chan any, tas
 
 		taskIDChan <- taskID
 	}
-	
+
 }

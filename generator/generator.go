@@ -37,25 +37,3 @@ func (g *Generator) Generate(amount int) (data []any, err error) {
 
 	return data, nil
 }
-
-// func (g *Generator) GenerateReplace(amount int, value any) error {
-// 	// generate data
-
-// 	data, ok := value.(*[]reflect.Type)
-// 	if !ok {
-// 		return fmt.Errorf("value is not a pointer to slice")
-// 	}
-
-// 	*data = make([]any, amount)
-// 	for i := 0; i < amount; i++ {
-// 		m := reflect.New(reflect.TypeOf(g.model)).Elem().Interface()
-// 		err := faker.FakeData(&m)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		(*data)[i] = m
-// 	}
-
-// 	return nil
-// }
-

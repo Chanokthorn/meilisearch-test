@@ -1,5 +1,5 @@
 /*
-Copyright © 2025 NAME HERE chanokthorn6@gmail.com
+Copyright © 2025 Chanokthorn Uerpairojkit chanokthorn6@gmail.com
 */
 package cmd
 
@@ -10,7 +10,9 @@ import (
 	"ms-tester/meilisearch"
 	"ms-tester/model"
 	"ms-tester/runner"
+	"ms-tester/storage"
 	"ms-tester/storage/file_system"
+	"ms-tester/storage/pg"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -20,13 +22,24 @@ type uploadMode string
 
 const (
 	uploadModeIterative uploadMode = "iterative"
-	uploadModeBatch      uploadMode = "batch"
+	uploadModeBatch     uploadMode = "batch"
 )
 
 var (
-	mode     uploadMode
-	filePath string
-	index    string
+	sourceType string
+	// source string
+	mode      uploadMode
+	sourceURL string
+	index     string
+
+	// pg source config
+	tableName string
+
+	// read config
+	readLimit int
+
+	// batch config
+	batchSize int
 )
 
 // uploadCmd represents the upload command
@@ -42,11 +55,31 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg := config.Read()
 
-		fmt.Println("upload called on file:", filePath)
+		fmt.Println("upload called on file:", sourceURL)
 
-		loader := file_system.NewStreamLoader(file_system.WithReadBatchSize(100))
-		loader.SetReadFile(filePath)
-		loader.SetModel(model.Product{})
+		var (
+			loader storage.StreamLoader
+			err    error
+		)
+
+		switch sourceType {
+		case "file":
+			fmt.Println("uploading from file")
+			fsLoader := file_system.NewStreamLoader(file_system.WithReadBatchSize(100))
+			fsLoader.SetModel(&model.Product{})
+			fsLoader.SetReadFile(sourceURL)
+
+			loader = fsLoader
+		case "pg":
+			fmt.Println("uploading from postgres")
+			pgLoader, err := pg.NewStreamLoader(sourceURL)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			pgLoader.SetTable("products", "id").SetQueryLimit(100).SetSampleLimit(1000)
+			loader = pgLoader
+		}
 
 		ms := meilisearch.NewMeiliSearch(cfg.Host, cfg.MasterKey)
 
@@ -62,7 +95,7 @@ to quickly create a Cobra application.`,
 			wk = runner.NewIterativeWorker(ms).SetIndexUid(index)
 		case uploadModeBatch:
 			fmt.Println("upload mode bulk")
-			wk = runner.NewBatchWorker(ms).SetBatchSize(10).SetIndexUid(index)
+			wk = runner.NewBatchWorker(ms).SetBatchSize(batchSize).SetIndexUid(index)
 		default:
 			fmt.Println("upload mode not found, exiting...")
 			return
@@ -94,10 +127,19 @@ to quickly create a Cobra application.`,
 func init() {
 	uploadCmd.Flags().StringVarP((*string)(&mode), "mode", "m", "", "upload mode")
 	uploadCmd.MarkFlagRequired("mode")
-	uploadCmd.Flags().StringVarP(&filePath, "path", "p", "", "path directory")
+
+	uploadCmd.Flags().StringVar(&sourceType, "source-type", "", "source type")
+	uploadCmd.Flags().StringVar(&sourceURL, "source", "", "source directory")
+	uploadCmd.MarkFlagsRequiredTogether("source", "source")
+
+	uploadCmd.Flags().StringVarP(&sourceURL, "path", "p", "", "path directory")
 	uploadCmd.MarkFlagRequired("mode")
 	uploadCmd.Flags().StringVarP(&index, "index", "i", "", "index name")
 	uploadCmd.MarkFlagRequired("index")
+
+	uploadCmd.Flags().IntVar(&readLimit, "read-limit", 0, "read limit")
+	uploadCmd.Flags().IntVar(&batchSize, "batch-size", 10, "batch size")
+
 	rootCmd.AddCommand(uploadCmd)
 
 	// Here you will define your flags and configuration settings.
